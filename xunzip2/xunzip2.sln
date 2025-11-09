@@ -1,0 +1,50 @@
+Microsoft Visual Studio Solution File, Format Version 8.00
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xunzip2", "xunzip2.vcproj", "{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "testapp", "..\xunzip-testapp\xunzip-testapp.vcproj", "{5BB1BC82-B0FE-425D-8637-17587F03DB30}"
+	ProjectSection(ProjectDependencies) = postProject
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE} = {BC45C73B-8E46-486F-AEEA-BC84B0718ECE}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		Debug = Debug
+		Profile = Profile
+		Profile_FastCap = Profile_FastCap
+		Release = Release
+		Release_LTCG = Release_LTCG
+		Release_nodeploy = Release_nodeploy
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}.Debug.ActiveCfg = Debug|Xbox
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}.Debug.Build.0 = Debug|Xbox
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}.Profile.ActiveCfg = Profile|Xbox
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}.Profile.Build.0 = Profile|Xbox
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}.Profile_FastCap.ActiveCfg = Profile_FastCap|Xbox
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}.Profile_FastCap.Build.0 = Profile_FastCap|Xbox
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}.Release.ActiveCfg = Release|Xbox
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}.Release.Build.0 = Release|Xbox
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}.Release_LTCG.ActiveCfg = Release_LTCG|Xbox
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}.Release_LTCG.Build.0 = Release_LTCG|Xbox
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}.Release_nodeploy.ActiveCfg = Release_nodeploy|Xbox
+		{BC45C73B-8E46-486F-AEEA-BC84B0718ECE}.Release_nodeploy.Build.0 = Release_nodeploy|Xbox
+		{5BB1BC82-B0FE-425D-8637-17587F03DB30}.Debug.ActiveCfg = Debug|Xbox
+		{5BB1BC82-B0FE-425D-8637-17587F03DB30}.Debug.Build.0 = Debug|Xbox
+		{5BB1BC82-B0FE-425D-8637-17587F03DB30}.Profile.ActiveCfg = Profile|Xbox
+		{5BB1BC82-B0FE-425D-8637-17587F03DB30}.Profile.Build.0 = Profile|Xbox
+		{5BB1BC82-B0FE-425D-8637-17587F03DB30}.Profile_FastCap.ActiveCfg = Profile_FastCap|Xbox
+		{5BB1BC82-B0FE-425D-8637-17587F03DB30}.Profile_FastCap.Build.0 = Profile_FastCap|Xbox
+		{5BB1BC82-B0FE-425D-8637-17587F03DB30}.Release.ActiveCfg = Release|Xbox
+		{5BB1BC82-B0FE-425D-8637-17587F03DB30}.Release.Build.0 = Release|Xbox
+		{5BB1BC82-B0FE-425D-8637-17587F03DB30}.Release_LTCG.ActiveCfg = Release_LTCG|Xbox
+		{5BB1BC82-B0FE-425D-8637-17587F03DB30}.Release_LTCG.Build.0 = Release_LTCG|Xbox
+		{5BB1BC82-B0FE-425D-8637-17587F03DB30}.Release_nodeploy.ActiveCfg = Release_nodeploy|Xbox
+		{5BB1BC82-B0FE-425D-8637-17587F03DB30}.Release_nodeploy.Build.0 = Release_nodeploy|Xbox
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal

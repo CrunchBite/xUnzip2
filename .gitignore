@@ -1,0 +1,5 @@
+xunzip2/Debug*
+xunzip2/Release*
+xunzip-testapp/Debug*
+xunzip-testapp/Release*
+*.ncb
