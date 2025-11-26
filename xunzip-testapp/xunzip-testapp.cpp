@@ -25,7 +25,7 @@ VOID __cdecl main() {
 	bool ret = false;
 
 	// Uncomment this if you want to have a clean cache drive (Z:\) to use
-	//!XMountUtilityDrive(true);
+	//XMountUtilityDrive(true);
 	
 	// Mount all drives
 	// The way this is done is a simple 'jailbreak' out of the XDK's usual constraints on disk access.

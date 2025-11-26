@@ -14,8 +14,8 @@ class CZipArchive {
 
 private:
 
-	int				ExtractZip(UNZIP& zip, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite);
-	int				ExtractCurrentFile(UNZIP& zip, const char * pszDestinationFolder, const bool bUseFolderNames, bool bOverwrite);
+	int				ExtractZip(UNZIP* zip, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite);
+	int				ExtractCurrentFile(UNZIP* zip, const char * pszDestinationFolder, const bool bUseFolderNames, bool bOverwrite);
 
 	void		  * m_pUnZipBuffer;
 	unsigned int	m_uiUnZipBufferSize;

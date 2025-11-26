@@ -43,7 +43,7 @@ bool CZipArchive::ExtractFromFile(const char * pszSource, const char * pszDestin
 		return false;
 	}
 
-	rc = ExtractZip(zip, pszDestinationFolder, bUseFolderNames, bOverwrite);
+	rc = ExtractZip(&zip, pszDestinationFolder, bUseFolderNames, bOverwrite);
 
 	zip.closeZIP();
 	return (rc == UNZ_OK || rc == UNZ_END_OF_LIST_OF_FILE);
@@ -60,19 +60,19 @@ bool CZipArchive::ExtractFromMemory(uint8_t *pData, int iDataSize, const char * 
 		return false;
 	}
 
-	rc = ExtractZip(zip, pszDestinationFolder, bUseFolderNames, bOverwrite);
+	rc = ExtractZip(&zip, pszDestinationFolder, bUseFolderNames, bOverwrite);
 
 	zip.closeZIP();
 	return (rc == UNZ_OK || rc == UNZ_END_OF_LIST_OF_FILE);
 }
 
-int CZipArchive::ExtractZip(UNZIP& zip, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite) {
+int CZipArchive::ExtractZip(UNZIP* zip, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite) {
 	char szComment[256], szName[256];
 	unz_file_info fi;
 	int rc;
 
 	// Use global comment as a zip sanity check
-	rc = zip.getGlobalComment(szComment, sizeof(szComment));
+	rc = zip->getGlobalComment(szComment, sizeof(szComment));
 	if (rc != UNZ_OK) {
 		return rc;
 	}
@@ -80,13 +80,13 @@ int CZipArchive::ExtractZip(UNZIP& zip, const char * pszDestinationFolder, const
 	// Ensure that the destination root folder exists
 	CreateDirectory(pszDestinationFolder, NULL);
 
-	zip.gotoFirstFile();
+	zip->gotoFirstFile();
 	rc = UNZ_OK;
 
 	// Loop through all files
 	while (rc == UNZ_OK) {
 		// File record ok?
-		rc = zip.getFileInfo(&fi, szName, sizeof(szName), NULL, 0, szComment, sizeof(szComment));
+		rc = zip->getFileInfo(&fi, szName, sizeof(szName), NULL, 0, szComment, sizeof(szComment));
 		if (rc == UNZ_OK) {
 			// Extract the current file
 			if ((rc = ExtractCurrentFile(zip, pszDestinationFolder, bUseFolderNames, bOverwrite)) != UNZ_OK) {
@@ -94,7 +94,7 @@ int CZipArchive::ExtractZip(UNZIP& zip, const char * pszDestinationFolder, const
 				break;
 			}
 		}
-		rc = zip.gotoNextFile();
+		rc = zip->gotoNextFile();
 	}
 
 	// Return status
@@ -132,7 +132,7 @@ char *strreplall(char *Str, size_t BufSiz, char *OldStr, char *NewStr) {
 	return ret;
 }
 
-int CZipArchive::ExtractCurrentFile(UNZIP& zip, const char * pszDestinationFolder, const bool bUseFolderNames, bool bOverwrite) {
+int CZipArchive::ExtractCurrentFile(UNZIP* zip, const char * pszDestinationFolder, const bool bUseFolderNames, bool bOverwrite) {
 	char szComment[256] = {0};
 	char szFileName_InZip[1024] = {0};
 	char szBuffer[1024];
@@ -158,7 +158,7 @@ int CZipArchive::ExtractCurrentFile(UNZIP& zip, const char * pszDestinationFolde
 	}
 
 	// Get information about the current file
-	rc = zip.getFileInfo(&fi, szBuffer, sizeof(szBuffer), NULL, 0, szComment, sizeof(szComment));
+	rc = zip->getFileInfo(&fi, szBuffer, sizeof(szBuffer), NULL, 0, szComment, sizeof(szComment));
 	if (rc != UNZ_OK) {
 		return rc;
 	}
@@ -233,7 +233,7 @@ int CZipArchive::ExtractCurrentFile(UNZIP& zip, const char * pszDestinationFolde
 	}
 
 	// Open the current file
-	if ((rc = zip.openCurrentFile()) != UNZ_OK) {
+	if ((rc = zip->openCurrentFile()) != UNZ_OK) {
 		return rc;
 	}
 
@@ -299,7 +299,7 @@ int CZipArchive::ExtractCurrentFile(UNZIP& zip, const char * pszDestinationFolde
 	if (hFile != (HANDLE)INVALID_HANDLE_VALUE) {
 		do {
 			// Read the current file
-			if ((rc = zip.readCurrentFile((uint8_t*)m_pUnZipBuffer, m_uiUnZipBufferSize)) < 0) {
+			if ((rc = zip->readCurrentFile((uint8_t*)m_pUnZipBuffer, m_uiUnZipBufferSize)) < 0) {
 				// Error reading zip file
 				// Break out of loop
 				break;
@@ -327,11 +327,11 @@ int CZipArchive::ExtractCurrentFile(UNZIP& zip, const char * pszDestinationFolde
 
 	if (rc == UNZ_OK) {
 		// Close current file
-		rc = zip.closeCurrentFile();
+		rc = zip->closeCurrentFile();
 	}
 	else {
 		// Close current file (don't lose the error)
-		zip.closeCurrentFile();
+		zip->closeCurrentFile();
 	}
 
 	// Return status
