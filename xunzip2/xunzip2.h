@@ -13,8 +13,9 @@
  * @param totalFiles   Total entry count (when callback is used; 0 if no callback).
  * @param currentFileName  Path/name of the current entry inside the zip.
  * @param userData     Value passed through from the extract call; use for context (e.g. UI handle).
+ * @return true to continue extraction, false to cancel (extract returns false).
  */
-typedef void (*xunzip_progress_fn)(int currentFile, int totalFiles, const char* currentFileName, void* userData);
+typedef bool (*xunzip_progress_fn)(int currentFile, int totalFiles, const char* currentFileName, void* userData);
 
 /**
  * Extract a ZIP from a file on disk.

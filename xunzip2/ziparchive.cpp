@@ -165,7 +165,10 @@ int CZipArchive::ExtractZip(UNZIP* zip, const char * pszDestinationFolder, const
 		if (rc == UNZ_OK) {
 			currentFileIndex++;
 			if (progressCallback != NULL) {
-				progressCallback(currentFileIndex, totalFileCount, szName, progressUserData);
+				if (!progressCallback(currentFileIndex, totalFileCount, szName, progressUserData)) {
+					rc = UNZ_PARAMERROR;  /* cancelled by user */
+					break;
+				}
 			}
 			// Extract the current file
 			if ((rc = ExtractCurrentFile(zip, pszDestinationFolder, bUseFolderNames, bOverwrite, pszStripPrefix)) != UNZ_OK) {
