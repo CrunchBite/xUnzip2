@@ -105,6 +105,7 @@ int CZipArchive::ExtractZip(UNZIP* zip, const char * pszDestinationFolder, const
 	unz_file_info fi;
 	int rc;
 	int currentFileIndex = 0;
+	int totalFileCount = 0;
 	const char* pszStripPrefix = NULL;
 
 	// Use global comment as a zip sanity check
@@ -113,13 +114,14 @@ int CZipArchive::ExtractZip(UNZIP* zip, const char * pszDestinationFolder, const
 		return rc;
 	}
 
-	// If strip single root requested, first pass to detect single root folder name
+	// If strip single root requested, first pass to detect single root folder name (and count when progress callback set)
 	if (bStripSingleRootFolder) {
 		zip->gotoFirstFile();
 		rc = UNZ_OK;
 		while (rc == UNZ_OK) {
 			rc = zip->getFileInfo(&fi, szName, sizeof(szName), NULL, 0, szComment, sizeof(szComment));
 			if (rc != UNZ_OK) break;
+			if (progressCallback != NULL) totalFileCount++;
 			strncpy(pathCopy, szName, sizeof(pathCopy) - 1);
 			pathCopy[sizeof(pathCopy) - 1] = '\0';
 			strreplall(pathCopy, sizeof(pathCopy), (char*)"/", (char*)"\\");
@@ -139,6 +141,19 @@ int CZipArchive::ExtractZip(UNZIP* zip, const char * pszDestinationFolder, const
 		zip->gotoFirstFile();
 		rc = UNZ_OK;
 	}
+	// If progress callback set but we didn't count yet, do a count-only pass
+	else if (progressCallback != NULL) {
+		zip->gotoFirstFile();
+		rc = UNZ_OK;
+		while (rc == UNZ_OK) {
+			rc = zip->getFileInfo(&fi, szName, sizeof(szName), NULL, 0, szComment, sizeof(szComment));
+			if (rc != UNZ_OK) break;
+			totalFileCount++;
+			rc = zip->gotoNextFile();
+		}
+		zip->gotoFirstFile();
+		rc = UNZ_OK;
+	}
 
 	// Ensure that the destination root folder exists
 	CreateDirectory(pszDestinationFolder, NULL);
@@ -149,8 +164,8 @@ int CZipArchive::ExtractZip(UNZIP* zip, const char * pszDestinationFolder, const
 		rc = zip->getFileInfo(&fi, szName, sizeof(szName), NULL, 0, szComment, sizeof(szComment));
 		if (rc == UNZ_OK) {
 			currentFileIndex++;
-			if (progressCallback) {
-				progressCallback(currentFileIndex, 0, szName, progressUserData);
+			if (progressCallback != NULL) {
+				progressCallback(currentFileIndex, totalFileCount, szName, progressUserData);
 			}
 			// Extract the current file
 			if ((rc = ExtractCurrentFile(zip, pszDestinationFolder, bUseFolderNames, bOverwrite, pszStripPrefix)) != UNZ_OK) {

@@ -10,7 +10,7 @@
 /**
  * Progress callback type. Invoked once per archive entry (file or directory) before it is processed.
  * @param currentFile  1-based index of the current entry.
- * @param totalFiles   Total entry count (0 = unknown).
+ * @param totalFiles   Total entry count (when callback is used; 0 if no callback).
  * @param currentFileName  Path/name of the current entry inside the zip.
  * @param userData     Value passed through from the extract call; use for context (e.g. UI handle).
  */
