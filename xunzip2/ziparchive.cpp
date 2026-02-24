@@ -20,6 +20,38 @@ void zipFile_Close(void *p);
 int32_t zipFile_Read(void *p, uint8_t *buffer, int32_t length);
 int32_t zipFile_Seek(void *p, int32_t position, int iType);
 
+
+char *strrepl(char *Str, size_t BufSiz, char *OldStr, char *NewStr) {
+    int OldLen, NewLen;
+    char *p, *q;
+
+	if (NULL == (p = strstr(Str, OldStr))) {
+        return Str;
+	}
+
+    OldLen = strlen(OldStr);
+    NewLen = strlen(NewStr);
+
+	if ((strlen(Str) + NewLen - OldLen + 1) > BufSiz) {
+        return NULL;
+	}
+
+    memmove(q = p + NewLen, p + OldLen, strlen(p + OldLen)+1);
+    memcpy(p, NewStr, NewLen);
+    return q;
+}
+
+char *strreplall(char *Str, size_t BufSiz, char *OldStr, char *NewStr) {
+	char *ret;
+	size_t i;
+
+	for (i = 0; i < BufSiz; i++) {
+		ret = strrepl(Str, BufSiz, OldStr, NewStr);
+	}
+
+	return ret;
+}
+
 CZipArchive::CZipArchive(void) {
 	m_pUnZipBuffer		= (void*)NULL;
 	m_uiUnZipBufferSize	= 131072; // amount to malloc
@@ -73,7 +105,7 @@ int CZipArchive::ExtractZip(UNZIP* zip, const char * pszDestinationFolder, const
 	unz_file_info fi;
 	int rc;
 	int currentFileIndex = 0;
-	const char* pszStripPrefix = nullptr;
+	const char* pszStripPrefix = NULL;
 
 	// Use global comment as a zip sanity check
 	rc = zip->getGlobalComment(szComment, sizeof(szComment));
@@ -103,7 +135,7 @@ int CZipArchive::ExtractZip(UNZIP* zip, const char * pszDestinationFolder, const
 			}
 			rc = zip->gotoNextFile();
 		}
-		pszStripPrefix = (firstRoot[0] != '\0') ? firstRoot : nullptr;
+		pszStripPrefix = (firstRoot[0] != '\0') ? firstRoot : NULL;
 		zip->gotoFirstFile();
 		rc = UNZ_OK;
 	}
@@ -131,37 +163,6 @@ int CZipArchive::ExtractZip(UNZIP* zip, const char * pszDestinationFolder, const
 
 	// Return status
 	return rc;
-}
-
-char *strrepl(char *Str, size_t BufSiz, char *OldStr, char *NewStr) {
-    int OldLen, NewLen;
-    char *p, *q;
-
-	if (NULL == (p = strstr(Str, OldStr))) {
-        return Str;
-	}
-
-    OldLen = strlen(OldStr);
-    NewLen = strlen(NewStr);
-
-	if ((strlen(Str) + NewLen - OldLen + 1) > BufSiz) {
-        return NULL;
-	}
-
-    memmove(q = p + NewLen, p + OldLen, strlen(p + OldLen)+1);
-    memcpy(p, NewStr, NewLen);
-    return q;
-}
-
-char *strreplall(char *Str, size_t BufSiz, char *OldStr, char *NewStr) {
-	char *ret;
-	size_t i;
-
-	for (i = 0; i < BufSiz; i++) {
-		ret = strrepl(Str, BufSiz, OldStr, NewStr);
-	}
-
-	return ret;
 }
 
 int CZipArchive::ExtractCurrentFile(UNZIP* zip, const char * pszDestinationFolder, const bool bUseFolderNames, bool bOverwrite, const char* pszStripRootPrefix) {

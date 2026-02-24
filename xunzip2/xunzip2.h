@@ -23,11 +23,11 @@ typedef void (*xunzip_progress_fn)(int currentFile, int totalFiles, const char* 
  * @param bUseFolderNames        true = keep paths from zip; false = flatten all files into destination.
  * @param bOverwrite             true = overwrite existing files (default).
  * @param bStripSingleRootFolder true = if zip has one top-level folder, extract its contents only (no root folder).
- * @param progressCallback       Optional; called per entry. Pass nullptr to omit.
- * @param progressUserData       Passed to progressCallback; use nullptr if not needed.
+ * @param progressCallback       Optional; called per entry. Pass NULL to omit.
+ * @param progressUserData       Passed to progressCallback; use NULL if not needed.
  * @return true on success, false on failure.
  */
-bool xunzipFromFile(const char * pszSource, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite = true, const bool bStripSingleRootFolder = false, xunzip_progress_fn progressCallback = nullptr, void* progressUserData = nullptr);
+bool xunzipFromFile(const char * pszSource, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite = true, const bool bStripSingleRootFolder = false, xunzip_progress_fn progressCallback = NULL, void* progressUserData = NULL);
 
 /**
  * Extract a ZIP from a buffer in memory.
@@ -37,11 +37,11 @@ bool xunzipFromFile(const char * pszSource, const char * pszDestinationFolder, c
  * @param bUseFolderNames        true = keep paths from zip; false = flatten all files into destination.
  * @param bOverwrite             true = overwrite existing files (default).
  * @param bStripSingleRootFolder true = if zip has one top-level folder, extract its contents only (no root folder).
- * @param progressCallback       Optional; called per entry. Pass nullptr to omit.
- * @param progressUserData       Passed to progressCallback; use nullptr if not needed.
+ * @param progressCallback       Optional; called per entry. Pass NULL to omit.
+ * @param progressUserData       Passed to progressCallback; use NULL if not needed.
  * @return true on success, false on failure.
  */
-bool xunzipFromMemory(void *pData, int iDataSize, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite = true, const bool bStripSingleRootFolder = false, xunzip_progress_fn progressCallback = nullptr, void* progressUserData = nullptr);
+bool xunzipFromMemory(void *pData, int iDataSize, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite = true, const bool bStripSingleRootFolder = false, xunzip_progress_fn progressCallback = NULL, void* progressUserData = NULL);
 
 /**
  * Extract a ZIP from an XBE section by name (e.g. embedded zip in the executable).
@@ -50,10 +50,10 @@ bool xunzipFromMemory(void *pData, int iDataSize, const char * pszDestinationFol
  * @param bUseFolderNames        true = keep paths from zip; false = flatten all files into destination.
  * @param bOverwrite             true = overwrite existing files (default).
  * @param bStripSingleRootFolder true = if zip has one top-level folder, extract its contents only (no root folder).
- * @param progressCallback       Optional; called per entry. Pass nullptr to omit.
- * @param progressUserData       Passed to progressCallback; use nullptr if not needed.
+ * @param progressCallback       Optional; called per entry. Pass NULL to omit.
+ * @param progressUserData       Passed to progressCallback; use NULL if not needed.
  * @return true on success, false on failure (e.g. section not found).
  */
-bool xunzipFromXBESection(const char * pszSectionName, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite = true, const bool bStripSingleRootFolder = false, xunzip_progress_fn progressCallback = nullptr, void* progressUserData = nullptr);
+bool xunzipFromXBESection(const char * pszSectionName, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite = true, const bool bStripSingleRootFolder = false, xunzip_progress_fn progressCallback = NULL, void* progressUserData = NULL);
 
 #endif // __XUNZIP2_H__
