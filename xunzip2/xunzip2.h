@@ -33,7 +33,7 @@ bool xunzipFromFile(const char * pszSource, const char * pszDestinationFolder, c
 /**
  * Extract a ZIP from a buffer in memory.
  * @param pData                  Pointer to the raw zip data.
- * @param iDataSize              Size in bytes of the zip data.
+ * @param iDataSize              Size in bytes of the zip data. [LARGE FILE CHANGE] was int, now __int64 to support buffers > 2GB.
  * @param pszDestinationFolder   Folder to extract into (created if needed).
  * @param bUseFolderNames        true = keep paths from zip; false = flatten all files into destination.
  * @param bOverwrite             true = overwrite existing files (default).
@@ -42,7 +42,7 @@ bool xunzipFromFile(const char * pszSource, const char * pszDestinationFolder, c
  * @param progressUserData       Passed to progressCallback; use NULL if not needed.
  * @return true on success, false on failure.
  */
-bool xunzipFromMemory(void *pData, int iDataSize, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite = true, const bool bStripSingleRootFolder = false, xunzip_progress_fn progressCallback = NULL, void* progressUserData = NULL);
+bool xunzipFromMemory(void *pData, __int64 iDataSize, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite = true, const bool bStripSingleRootFolder = false, xunzip_progress_fn progressCallback = NULL, void* progressUserData = NULL); // [LARGE FILE CHANGE] iDataSize was int, now __int64
 
 /**
  * Extract a ZIP from an XBE section by name (e.g. embedded zip in the executable).

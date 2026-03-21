@@ -11,7 +11,7 @@ class CZipArchive {
 					~CZipArchive(void);
 	
 	bool			ExtractFromFile(const char * pszSource, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback = NULL, void* progressUserData = NULL);
-	bool			ExtractFromMemory(uint8_t *pData, int iDataSize, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback = NULL, void* progressUserData = NULL);
+	bool			ExtractFromMemory(uint8_t *pData, __int64 iDataSize, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback = NULL, void* progressUserData = NULL); // [LARGE FILE CHANGE] iDataSize was int, now __int64
 
 private:
 

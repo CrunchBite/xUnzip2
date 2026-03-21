@@ -15,7 +15,8 @@ bool xunzipFromFile(const char * pszSource, const char * pszDestinationFolder, c
 }
 
 // Extract from address in memory
-bool xunzipFromMemory(void *pData, int iDataSize, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback, void* progressUserData) {
+// [LARGE FILE CHANGE] iDataSize was int, now __int64 to support buffers > 2GB
+bool xunzipFromMemory(void *pData, __int64 iDataSize, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback, void* progressUserData) {
 	CZipArchive cZip;
 	return cZip.ExtractFromMemory((uint8_t *)pData, iDataSize, pszDestinationFolder, bUseFolderNames, bOverwrite, bStripSingleRootFolder, progressCallback, progressUserData);
 }

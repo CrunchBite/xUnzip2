@@ -1,4 +1,3 @@
-
 #include <xtl.h>
 #include <stdio.h>
 
@@ -15,10 +14,31 @@ using namespace std;
 #include "ziparchive.h"
 
 // Callbacks
-void * zipFile_Open(const char *filename, int32_t *size);
-void zipFile_Close(void *p);
+void *  zipFile_Open(const char *filename, __int64 *size); // [LARGE FILE CHANGE] size was int32_t*
+void    zipFile_Close(void *p);
 int32_t zipFile_Read(void *p, uint8_t *buffer, int32_t length);
-int32_t zipFile_Seek(void *p, int32_t position, int iType);
+__int64 zipFile_Seek(void *p, __int64 position, int iType); // [LARGE FILE CHANGE] was int32_t position/return
+
+// [LARGE FILE CHANGE] XboxFileHandle replaces bare FILE* in the callbacks.
+// The XDK CRT does not provide _get_osfhandle, _fseeki64 or _ftelli64, so we
+// bypass the CRT file layer entirely and use a Win32 HANDLE directly.
+// SetFilePointer with a LARGE_INTEGER gives us full 64-bit seek support.
+struct XboxFileHandle
+{
+    HANDLE  hFile;
+    __int64 iSize;
+};
+
+// 64-bit seek helper using Win32 SetFilePointer + LARGE_INTEGER
+static __int64 handle_seek64(HANDLE hFile, __int64 offset, DWORD dwMoveMethod)
+{
+    LARGE_INTEGER li;
+    li.QuadPart = offset;
+    li.LowPart  = SetFilePointer(hFile, li.LowPart, &li.HighPart, dwMoveMethod);
+    if (li.LowPart == INVALID_SET_FILE_POINTER && GetLastError() != NO_ERROR)
+        li.QuadPart = -1;
+    return li.QuadPart;
+}
 
 
 char *strrepl(char *Str, size_t BufSiz, char *OldStr, char *NewStr) {
@@ -82,11 +102,12 @@ bool CZipArchive::ExtractFromFile(const char * pszSource, const char * pszDestin
 }
 
 // Public
-bool CZipArchive::ExtractFromMemory(uint8_t *pData, int iDataSize, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback, void* progressUserData) {
+// [LARGE FILE CHANGE] iDataSize was int, now __int64 to support buffers > 2GB
+bool CZipArchive::ExtractFromMemory(uint8_t *pData, __int64 iDataSize, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback, void* progressUserData) {
 	UNZIP zip;
 	int rc;
 
-	rc = zip.openZIP(pData, iDataSize);
+	rc = zip.openZIP(pData, (uint64_t)iDataSize);
 	if (rc != UNZ_OK) {
 		zip.closeZIP();
 		return false;
@@ -402,43 +423,68 @@ int CZipArchive::ExtractCurrentFile(UNZIP* zip, const char * pszDestinationFolde
 }
 
 // Callback functions needed by the unzipLIB to access the filesystem
-void * zipFile_Open(const char *filename, int32_t *size) {
-	FILE *f = fopen(filename, "rb");
-	fseek(f, 0L, SEEK_END);
-	*size = ftell(f);
-	rewind(f);
-	return (void *)f;
+// [LARGE FILE CHANGE] All callbacks now use Win32 HANDLE via XboxFileHandle instead of
+// a CRT FILE*. This is required because the XDK CRT does not provide _get_osfhandle,
+// _fseeki64 or _ftelli64. Using HANDLE + SetFilePointer gives us full 64-bit seek support.
+
+void * zipFile_Open(const char *filename, __int64 *size) {
+	HANDLE hFile = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL,
+	                          OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == INVALID_HANDLE_VALUE) {
+		*size = 0;
+		return NULL;
+	}
+
+	// GetFileSize fills the high DWORD so we get the full 64-bit size
+	DWORD dwHigh = 0;
+	DWORD dwLow  = GetFileSize(hFile, &dwHigh);
+	if (dwLow == INVALID_FILE_SIZE && GetLastError() != NO_ERROR) {
+		CloseHandle(hFile);
+		*size = 0;
+		return NULL;
+	}
+
+	XboxFileHandle *pxfh = (XboxFileHandle*)malloc(sizeof(XboxFileHandle));
+	if (!pxfh) {
+		CloseHandle(hFile);
+		*size = 0;
+		return NULL;
+	}
+
+	pxfh->hFile = hFile;
+	pxfh->iSize = ((__int64)dwHigh << 32) | (__int64)dwLow;
+	*size       = pxfh->iSize;
+	return (void*)pxfh;
 }
 
 void zipFile_Close(void *p) {
 	ZIPFILE *pzf = (ZIPFILE *)p;
-	FILE *f = (FILE *)pzf->fHandle;
-
-	if (f) {
-		fclose(f);
+	XboxFileHandle *pxfh = (XboxFileHandle *)pzf->fHandle;
+	if (pxfh) {
+		if (pxfh->hFile != INVALID_HANDLE_VALUE)
+			CloseHandle(pxfh->hFile);
+		free(pxfh);
+		pzf->fHandle = NULL;
 	}
 }
 
 int32_t zipFile_Read(void *p, uint8_t *buffer, int32_t length) {
 	ZIPFILE *pzf = (ZIPFILE *)p;
-	FILE *f = (FILE *)pzf->fHandle;
-	return fread(buffer, 1, length, f);
+	XboxFileHandle *pxfh = (XboxFileHandle *)pzf->fHandle;
+	DWORD dwRead = 0;
+	if (!ReadFile(pxfh->hFile, buffer, (DWORD)length, &dwRead, NULL))
+		return -1;
+	return (int32_t)dwRead;
 }
 
-int32_t zipFile_Seek(void *p, int32_t position, int iType) {
+__int64 zipFile_Seek(void *p, __int64 position, int iType) {
 	ZIPFILE *pzf = (ZIPFILE *)p;
-	FILE *f = (FILE *)pzf->fHandle;
-	long l = 0;
+	XboxFileHandle *pxfh = (XboxFileHandle *)pzf->fHandle;
 
-	if (iType == SEEK_SET) {
-		return fseek(f, position, SEEK_SET);
-	}
-	else if (iType == SEEK_END) {
-		return fseek(f, position + pzf->iSize, SEEK_END); 
-	}
-	else { // SEEK_CUR
-		l = ftell(f);
-	}
+	DWORD dwMoveMethod;
+	if      (iType == SEEK_SET) dwMoveMethod = FILE_BEGIN;
+	else if (iType == SEEK_END) dwMoveMethod = FILE_END;
+	else                        dwMoveMethod = FILE_CURRENT;
 
-	return fseek(f, l + position, SEEK_CUR);
+	return handle_seek64(pxfh->hFile, position, dwMoveMethod);
 }

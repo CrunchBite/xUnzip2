@@ -71,7 +71,7 @@ const char unz_copyright[] =
 /* unz_file_info_interntal contain internal info about a file in zipfile*/
 typedef struct unz_file_info_internal_s
 {
-    uLong offset_curfile;/* relative offset of local header 4 bytes */
+    uint64_t offset_curfile; /* relative offset of local header [LARGE FILE CHANGE] was uLong, now 64-bit for ZIP64 */
 } unz_file_info_internal;
 
 
@@ -82,20 +82,20 @@ typedef struct
 	char  *read_buffer;         /* internal buffer for compressed data */
 	z_stream stream;            /* zLib stream structure for inflate */
 
-	uLong pos_in_zipfile;       /* position in byte on the zipfile, for fseek*/
+	uint64_t pos_in_zipfile;       /* position in byte on the zipfile, for fseek [LARGE FILE CHANGE] was uLong */
 	uLong stream_initialised;   /* flag set if stream structure is initialised*/
 
-	uLong offset_local_extrafield;/* offset of the local extra field */
+	uint64_t offset_local_extrafield;/* offset of the local extra field [LARGE FILE CHANGE] was uLong */
 	uInt  size_local_extrafield;/* size of the local extra field */
 	uLong pos_local_extrafield;   /* position in the local extra field in read*/
 
 	uLong crc32;                /* crc32 of all data uncompressed */
 	uLong crc32_wait;           /* crc32 we must obtain after decompress all */
-	uLong rest_read_compressed; /* number of byte to be decompressed */
-	uLong rest_read_uncompressed;/*number of byte to be obtained after decomp*/
+	uint64_t rest_read_compressed; /* number of byte to be decompressed [LARGE FILE CHANGE] was uLong */
+	uint64_t rest_read_uncompressed;/*number of byte to be obtained after decomp [LARGE FILE CHANGE] was uLong */
 	FILE* file;                 /* io structore of the zipfile */
 	uLong compression_method;   /* compression method (0==store) */
-	uLong byte_before_the_zipfile;/* byte before the zipfile, (>0 for sfx)*/
+	uint64_t byte_before_the_zipfile;/* byte before the zipfile, (>0 for sfx) [LARGE FILE CHANGE] was uLong */
 } file_in_zip_read_info_s;
 
 
@@ -106,15 +106,15 @@ typedef struct
 	FILE* file;                 /* io structore of the zipfile */
     ZIPFILE *zfile;
 	unz_global_info gi;       /* public global information */
-	uLong byte_before_the_zipfile;/* byte before the zipfile, (>0 for sfx)*/
+	uint64_t byte_before_the_zipfile;/* byte before the zipfile, (>0 for sfx) [LARGE FILE CHANGE] was uLong */
 	uLong num_file;             /* number of the current file in the zipfile*/
-	uLong pos_in_central_dir;   /* pos of the current file in the central dir*/
+	uint64_t pos_in_central_dir;   /* pos of the current file in the central dir [LARGE FILE CHANGE] was uLong */
 	uLong current_file_ok;      /* flag about the usability of the current file*/
-	uLong central_pos;          /* position of the beginning of the central dir*/
+	uint64_t central_pos;          /* position of the beginning of the central dir [LARGE FILE CHANGE] was uLong */
 
-	uLong size_central_dir;     /* size of the central directory  */
-	uLong offset_central_dir;   /* offset of start of central directory with
-								   respect to the starting disk number */
+	uint64_t size_central_dir;     /* size of the central directory   [LARGE FILE CHANGE] was uLong */
+	uint64_t offset_central_dir;   /* offset of start of central directory with
+								   respect to the starting disk number [LARGE FILE CHANGE] was uLong */
 
 	unz_file_info cur_file_info; /* public info about the current file in zip*/
 	unz_file_info_internal cur_file_info_internal; /* private info about it*/
@@ -220,14 +220,14 @@ extern int ZEXPORT unzStringFileNameCompare (fileName1,fileName2,iCaseSensitivit
   Locate the Central directory of a zipfile (at the end, just before
     the global comment)
 */
-local uLong unzlocal_SearchCentralDir(ZIPFILE *pzf)
+local uint64_t unzlocal_SearchCentralDir(ZIPFILE *pzf) /* [LARGE FILE CHANGE] return type was uLong */
 {
 //	unsigned char* buf;
     unsigned char buf[BUFREADCOMMENT+4];
-	uLong uSizeFile;
-	uLong uBackRead;
-	uLong uMaxBack=0xffff; /* maximum size of global comment */
-	uLong uPosFound=0;
+	uint64_t uSizeFile;  /* [LARGE FILE CHANGE] was uLong */
+	uint64_t uBackRead;  /* [LARGE FILE CHANGE] was uLong */
+	uint64_t uMaxBack=0xffff; /* maximum size of global comment */ /* [LARGE FILE CHANGE] was uLong */
+	uint64_t uPosFound=0; /* [LARGE FILE CHANGE] was uLong */
 	
 //	if (fseek(fin,0,SEEK_END) != 0)
 //		return 0;
@@ -246,7 +246,7 @@ local uLong unzlocal_SearchCentralDir(ZIPFILE *pzf)
 	uBackRead = 4;
 	while (uBackRead<uMaxBack)
 	{
-		uLong uReadSize,uReadPos ;
+		uint64_t uReadSize,uReadPos ; /* [LARGE FILE CHANGE] was uLong */
 		int i;
 		if (uBackRead+BUFREADCOMMENT>uMaxBack) 
 			uBackRead = uMaxBack;
@@ -258,7 +258,7 @@ local uLong unzlocal_SearchCentralDir(ZIPFILE *pzf)
                      (BUFREADCOMMENT+4) : (uSizeFile-uReadPos);
 //		if (fseek(fin,uReadPos,SEEK_SET)!=0)
 //			break;
-        (*pzf->pfnSeek)(pzf, (int32_t)uReadPos, SEEK_SET);
+        (*pzf->pfnSeek)(pzf, (int64_t)uReadPos, SEEK_SET); /* [LARGE FILE CHANGE] cast was int32_t */
 
 //		if (fread(buf,(uInt)uReadSize,1,fin)!=1)
 //			break;
@@ -284,9 +284,10 @@ static int32_t readMem(void *p, uint8_t *pBuf, int32_t iLen)
 {
     int32_t iBytesRead;
     ZIPFILE *pFile = (ZIPFILE *)p;
+    int64_t remaining = pFile->iSize - pFile->iPos; /* [LARGE FILE CHANGE] use int64_t for subtraction */
     iBytesRead = iLen;
-    if ((pFile->iSize - pFile->iPos) < iLen)
-       iBytesRead = pFile->iSize - pFile->iPos;
+    if (remaining < (int64_t)iLen)
+       iBytesRead = (remaining > 0) ? (int32_t)remaining : 0;
     if (iBytesRead <= 0)
        return 0;
     memcpy(pBuf, &pFile->pData[pFile->iPos], iBytesRead);
@@ -294,7 +295,10 @@ static int32_t readMem(void *p, uint8_t *pBuf, int32_t iLen)
     return iBytesRead;
 } /* readMem() */
 
-static int32_t seekMem(void *p, int32_t iPosition, int iType)
+/* [LARGE FILE CHANGE] seekMem: signature changed from int32_t to int64_t to match
+   the updated ZIP_SEEK_CALLBACK typedef. iPos/iSize are now int64_t so all
+   arithmetic here must also be int64_t to avoid truncation warnings. */
+static int64_t seekMem(void *p, int64_t iPosition, int iType)
 {
     ZIPFILE *pFile = (ZIPFILE *)p;
     switch (iType) {
@@ -323,11 +327,12 @@ static int32_t seekMem(void *p, int32_t iPosition, int iType)
      Else, the return value is a unzFile Handle, usable with other function
 	   of this unzip package.
 */
-extern unzFile ZEXPORT unzOpen (const char *path, uint8_t *pData, uint32_t u32DataSize, ZIPFILE *pzf, ZIP_OPEN_CALLBACK *pfnOpen, ZIP_READ_CALLBACK *pfnRead, ZIP_SEEK_CALLBACK *pfnSeek, ZIP_CLOSE_CALLBACK *pfnClose)
+extern unzFile ZEXPORT unzOpen (const char *path, uint8_t *pData, uint64_t u64DataSize, ZIPFILE *pzf, ZIP_OPEN_CALLBACK *pfnOpen, ZIP_READ_CALLBACK *pfnRead, ZIP_SEEK_CALLBACK *pfnSeek, ZIP_CLOSE_CALLBACK *pfnClose) /* [LARGE FILE CHANGE] u32DataSize->u64DataSize */
 {
 	unz_s us;
 	unz_s *s;
-	uLong central_pos,uL;
+	uint64_t central_pos; /* [LARGE FILE CHANGE] was uLong */
+	uLong uL;
 //	FILE * fin = NULL;
 
 	uLong number_disk;          /* number of the current dist, used for 
@@ -349,13 +354,13 @@ extern unzFile ZEXPORT unzOpen (const char *path, uint8_t *pData, uint32_t u32Da
         pzf->pfnSeek = seekMem;
         pzf->pfnClose = NULL;
         pzf->iPos = 0;
-        pzf->iSize = u32DataSize;
+        pzf->iSize = (int64_t)u64DataSize; /* [LARGE FILE CHANGE] cast to int64_t */
         pzf->pData = pData;
     } else {
         pzf->pfnClose = pfnClose;
         pzf->pfnRead = pfnRead;
         pzf->pfnSeek = pfnSeek;
-        pzf->fHandle = (*pfnOpen)(path, &pzf->iSize);
+        pzf->fHandle = (*pfnOpen)(path, &pzf->iSize); /* iSize is now int64_t, pfnOpen fills int64_t* */
 //        fin = (FILE *)pzf->fHandle;
     }
 //    fin=fopen(path,"rb");
@@ -366,7 +371,7 @@ extern unzFile ZEXPORT unzOpen (const char *path, uint8_t *pData, uint32_t u32Da
 	if (central_pos==0)
 		err=UNZ_ERRNO;
 
-    (*pzf->pfnSeek)(pzf, (int32_t)central_pos, SEEK_SET);
+    (*pzf->pfnSeek)(pzf, (int64_t)central_pos, SEEK_SET); /* [LARGE FILE CHANGE] cast was int32_t */
 //	if (fseek(fin,central_pos,SEEK_SET)!=0)
 //		err=UNZ_ERRNO;
 
@@ -396,13 +401,22 @@ extern unzFile ZEXPORT unzOpen (const char *path, uint8_t *pData, uint32_t u32Da
 		err=UNZ_BADZIPFILE;
 
 	/* size of the central directory */
-	if (unzlocal_getLong(pzf,&us.size_central_dir)!=UNZ_OK)
-		err=UNZ_ERRNO;
+	/* [LARGE FILE CHANGE] read into uLong temp then widen — getLong fills uLong* */
+	{
+		uLong tmp;
+		if (unzlocal_getLong(pzf,&tmp)!=UNZ_OK)
+			err=UNZ_ERRNO;
+		us.size_central_dir = (uint64_t)tmp;
+	}
 
 	/* offset of start of central directory with respect to the 
 	      starting disk number */
-	if (unzlocal_getLong(pzf,&us.offset_central_dir)!=UNZ_OK)
-		err=UNZ_ERRNO;
+	{
+		uLong tmp;
+		if (unzlocal_getLong(pzf,&tmp)!=UNZ_OK)
+			err=UNZ_ERRNO;
+		us.offset_central_dir = (uint64_t)tmp;
+	}
 
 	/* zipfile comment length */
 	if (unzlocal_getShort(pzf,&us.gi.size_comment)!=UNZ_OK)
@@ -423,7 +437,7 @@ extern unzFile ZEXPORT unzOpen (const char *path, uint8_t *pData, uint32_t u32Da
     us.zfile = pzf;
 //	us.file=fin;
 	us.byte_before_the_zipfile = central_pos -
-		                    (us.offset_central_dir+us.size_central_dir);
+		                    (us.offset_central_dir+us.size_central_dir); /* uint64_t arithmetic, byte_before_the_zipfile is uLong — safe for normal ZIPs but kept as-is; offsets fit in 32 bits for non-ZIP64 EOCD */
 	us.central_pos = central_pos;
     us.pfile_in_zip_read = NULL;
 	
@@ -536,7 +550,7 @@ local int unzlocal_GetCurrentFileInfoInternal (file,
 		return UNZ_PARAMERROR;
 	s=(unz_s*)file;
     pzf = s->zfile;
-    (*pzf->pfnSeek)(pzf, (int32_t)(s->pos_in_central_dir+s->byte_before_the_zipfile),SEEK_SET);
+    (*pzf->pfnSeek)(pzf, (int64_t)(s->pos_in_central_dir+s->byte_before_the_zipfile),SEEK_SET); /* [LARGE FILE CHANGE] cast was int32_t */
 //	if (fseek(s->file,s->pos_in_central_dir+s->byte_before_the_zipfile,SEEK_SET)!=0)
 //		err=UNZ_ERRNO;
 
@@ -570,11 +584,19 @@ local int unzlocal_GetCurrentFileInfoInternal (file,
 	if (unzlocal_getLong(pzf,&file_info.crc) != UNZ_OK)
 		err=UNZ_ERRNO;
 
-	if (unzlocal_getLong(pzf,&file_info.compressed_size) != UNZ_OK)
-		err=UNZ_ERRNO;
+	/* [LARGE FILE CHANGE] Read sizes into a uLong temp first, then widen to uint64_t.
+	   unzlocal_getLong fills a uLong*; compressed_size/uncompressed_size are now uint64_t.
+	   A ZIP64 extra field parsed later may overwrite these with the true 64-bit values. */
+	{
+		uLong tmp;
+		if (unzlocal_getLong(pzf,&tmp) != UNZ_OK)
+			err=UNZ_ERRNO;
+		file_info.compressed_size = (uint64_t)tmp;
 
-	if (unzlocal_getLong(pzf,&file_info.uncompressed_size) != UNZ_OK)
-		err=UNZ_ERRNO;
+		if (unzlocal_getLong(pzf,&tmp) != UNZ_OK)
+			err=UNZ_ERRNO;
+		file_info.uncompressed_size = (uint64_t)tmp;
+	}
 
 	if (unzlocal_getShort(pzf,&file_info.size_filename) != UNZ_OK)
 		err=UNZ_ERRNO;
@@ -594,8 +616,14 @@ local int unzlocal_GetCurrentFileInfoInternal (file,
 	if (unzlocal_getLong(pzf,&file_info.external_fa) != UNZ_OK)
 		err=UNZ_ERRNO;
 
-	if (unzlocal_getLong(pzf,&file_info_internal.offset_curfile) != UNZ_OK)
-		err=UNZ_ERRNO;
+	/* [LARGE FILE CHANGE] Read local header offset into temp uLong, then widen.
+	   ZIP64 extra field parsing below may replace this with the true 64-bit value. */
+	{
+		uLong tmp;
+		if (unzlocal_getLong(pzf,&tmp) != UNZ_OK)
+			err=UNZ_ERRNO;
+		file_info_internal.offset_curfile = (uint64_t)tmp;
+	}
 
 	lSeek+=file_info.size_filename;
 	if ((err==UNZ_OK) && (szFileName!=NULL))
@@ -627,7 +655,7 @@ local int unzlocal_GetCurrentFileInfoInternal (file,
 		if (lSeek!=0)
 		{
 //			if (fseek(s->file,lSeek,SEEK_CUR)==0)
-            (*pzf->pfnSeek)(pzf,(int32_t)lSeek,SEEK_CUR);
+            (*pzf->pfnSeek)(pzf,(int64_t)lSeek,SEEK_CUR)/* [LARGE FILE CHANGE] cast was int32_t */;
 				lSeek=0;
 //			else
 //				err=UNZ_ERRNO;
@@ -654,7 +682,7 @@ local int unzlocal_GetCurrentFileInfoInternal (file,
 
 		if (lSeek!=0)
 		{
-            (*pzf->pfnSeek)(pzf, (int32_t)lSeek, SEEK_CUR);
+            (*pzf->pfnSeek)(pzf, (int64_t)lSeek, SEEK_CUR)/* [LARGE FILE CHANGE] cast was int32_t */;
 //			if (fseek(s->file,lSeek,SEEK_CUR)==0)
 				lSeek=0;
 //			else
@@ -774,7 +802,7 @@ extern int ZEXPORT unzLocateFile (file, szFileName, iCaseSensitivity)
 
 	
 	uLong num_fileSaved;
-	uLong pos_in_central_dirSaved;
+	uint64_t pos_in_central_dirSaved; /* [LARGE FILE CHANGE] was uLong, must match pos_in_central_dir */
 
 
 	if (file==NULL)
@@ -822,7 +850,7 @@ local int unzlocal_CheckCurrentFileCoherencyHeader (s,piSizeVar,
 													psize_local_extrafield)
 	unz_s* s;
 	uInt* piSizeVar;
-	uLong *poffset_local_extrafield;
+	uint64_t *poffset_local_extrafield; /* [LARGE FILE CHANGE] was uLong*, must match offset_local_extrafield field */
 	uInt  *psize_local_extrafield;
 {
 	uLong uMagic,uData,uFlags;
@@ -835,7 +863,7 @@ local int unzlocal_CheckCurrentFileCoherencyHeader (s,piSizeVar,
 	*poffset_local_extrafield = 0;
 	*psize_local_extrafield = 0;
 
-	(*pzf->pfnSeek)(pzf,(int32_t)(s->cur_file_info_internal.offset_curfile +
+	(*pzf->pfnSeek)(pzf,(int64_t)(s->cur_file_info_internal.offset_curfile + /* [LARGE FILE CHANGE] cast was int32_t */
                                  s->byte_before_the_zipfile),SEEK_SET);
 //		return UNZ_ERRNO;
 
@@ -919,7 +947,7 @@ extern int ZEXPORT unzOpenCurrentFile (file)
 	unz_s* s;
     ZIPFILE *pzf;
 	file_in_zip_read_info_s* pfile_in_zip_read_info;
-	uLong offset_local_extrafield;  /* offset of the local extra field */
+	uint64_t offset_local_extrafield;  /* offset of the local extra field [LARGE FILE CHANGE] was uLong */
 	uInt  size_local_extrafield;    /* size of the local extra field */
 
 	if (file==NULL)
@@ -1060,7 +1088,7 @@ extern int ZEXPORT unzReadCurrentFile  (file, buf, len)
 			if (uReadThis == 0)
 				return UNZ_EOF;
 			(*pzf->pfnSeek)(pzf, /*pfile_in_zip_read_info->file,*/
-                      (int32_t)(pfile_in_zip_read_info->pos_in_zipfile +
+                      (int64_t)(pfile_in_zip_read_info->pos_in_zipfile + /* [LARGE FILE CHANGE] cast was int32_t */
                             pfile_in_zip_read_info->byte_before_the_zipfile),SEEK_SET);
 //				return UNZ_ERRNO;
 			if ((*pzf->pfnRead)(pzf, (uint8_t *)pfile_in_zip_read_info->read_buffer, uReadThis)!=uReadThis)
@@ -1232,7 +1260,7 @@ extern int ZEXPORT unzGetLocalExtrafield (file,buf,len)
 		return 0;
 	
 	(*pzf->pfnSeek)(pzf, /*pfile_in_zip_read_info->file,*/
-              (int32_t)(pfile_in_zip_read_info->offset_local_extrafield +
+              (int64_t)(pfile_in_zip_read_info->offset_local_extrafield + /* [LARGE FILE CHANGE] cast was int32_t */
                         pfile_in_zip_read_info->pos_local_extrafield),SEEK_SET);
 //		return UNZ_ERRNO;
 
@@ -1307,7 +1335,7 @@ extern int ZEXPORT unzGetGlobalComment (file, szComment, uSizeBuf)
 	if (uReadThis>s->gi.size_comment)
 		uReadThis = s->gi.size_comment;
 
-    (*pzf->pfnSeek)(pzf, (int32_t)(s->central_pos+22),SEEK_SET);
+    (*pzf->pfnSeek)(pzf, (int64_t)(s->central_pos+22),SEEK_SET)/* [LARGE FILE CHANGE] cast was int32_t */;
 //		return UNZ_ERRNO;
 
 	if (uReadThis>0)

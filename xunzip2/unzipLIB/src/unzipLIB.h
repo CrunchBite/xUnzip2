@@ -40,7 +40,7 @@
 class UNZIP
 {
   public:
-    int openZIP(uint8_t *pData, uint32_t iDataSize);
+    int openZIP(uint8_t *pData, uint64_t iDataSize); // [LARGE FILE CHANGE] was uint32_t
     int openZIP(const char *szFilename, ZIP_OPEN_CALLBACK *pfnOpen, ZIP_CLOSE_CALLBACK *pfnClose, ZIP_READ_CALLBACK *pfnRead, ZIP_SEEK_CALLBACK *pfnSeek);
     int closeZIP();
     int openCurrentFile();
