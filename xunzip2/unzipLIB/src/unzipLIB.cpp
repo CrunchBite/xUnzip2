@@ -17,7 +17,8 @@
 //===========================================================================
 #include "unzipLIB.h"
 
-int UNZIP::openZIP(uint8_t *pData, uint32_t iDataSize)
+// [LARGE FILE CHANGE] iDataSize was uint32_t, now uint64_t to support in-memory zips > 4GB
+int UNZIP::openZIP(uint8_t *pData, uint64_t iDataSize)
 {
     _zip.zHandle = unzOpen(NULL, pData, iDataSize, &_zip, NULL, NULL, NULL, NULL);
     if (_zip.zHandle == NULL) {

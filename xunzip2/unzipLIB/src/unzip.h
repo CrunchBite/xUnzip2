@@ -62,18 +62,21 @@ extern "C" {
 
 //
 // Callback functions for file I/O
+// [LARGE FILE CHANGE] ZIP_SEEK_CALLBACK and ZIP_OPEN_CALLBACK now use int64_t
+// so that zip files larger than 2GB can be seeked and sized correctly.
+// ZIP_READ_CALLBACK is unchanged (chunk lengths are always 32-bit).
 //
 typedef int32_t (ZIP_READ_CALLBACK)(void *pFile, uint8_t *pBuf, int32_t iLen);
-typedef int32_t (ZIP_SEEK_CALLBACK)(void *pFile, int32_t iPosition, int iType);
-typedef void * (ZIP_OPEN_CALLBACK)(const char *szFilename, int32_t *pFileSize);
+typedef int64_t (ZIP_SEEK_CALLBACK)(void *pFile, int64_t iPosition, int iType); // was int32_t
+typedef void * (ZIP_OPEN_CALLBACK)(const char *szFilename, int64_t *pFileSize);  // was int32_t*
 typedef void (ZIP_CLOSE_CALLBACK)(void *pFile);
 //
 // The zipfile structure to hold our file/memory state
 //
 typedef struct zipFile
 {
-    int32_t iPos; // current file position
-    int32_t iSize; // file size
+    int64_t iPos; // current file position [LARGE FILE CHANGE] was int32_t
+    int64_t iSize; // file size             [LARGE FILE CHANGE] was int32_t
     int iLastError;
     uint8_t *pData; // memory file pointer
     void * fHandle; // class pointer to File/SdFat or whatever you want
@@ -136,8 +139,8 @@ typedef struct unz_file_info_s
     uLong compression_method;   /* compression method              2 bytes */
     uLong dosDate;              /* last mod file date in Dos fmt   4 bytes */
     uLong crc;                  /* crc-32                          4 bytes */
-    uLong compressed_size;      /* compressed size                 4 bytes */ 
-    uLong uncompressed_size;    /* uncompressed size               4 bytes */ 
+    uint64_t compressed_size;   /* compressed size  [LARGE FILE CHANGE] was uLong, now 64-bit for ZIP64 */
+    uint64_t uncompressed_size; /* uncompressed size [LARGE FILE CHANGE] was uLong, now 64-bit for ZIP64 */
     uLong size_filename;        /* filename length                 2 bytes */
     uLong size_file_extra;      /* extra field length              2 bytes */
     uLong size_file_comment;    /* file comment length             2 bytes */
@@ -156,13 +159,14 @@ extern int ZEXPORT unzStringFileNameCompare OF ((const char* fileName1,
    Compare two filename (fileName1,fileName2).
    If iCaseSenisivity = 1, comparision is case sensitivity (like strcmp)
    If iCaseSenisivity = 2, comparision is not case sensitivity (like strcmpi
-								or strcasecmp)
+							or strcasecmp)
    If iCaseSenisivity = 0, case sensitivity is defaut of your operating system
 	(like 1 on Unix, 2 on Windows)
 */
 
 
-extern unzFile ZEXPORT unzOpen OF((const char *path, uint8_t *pData, uint32_t u32DataSize, ZIPFILE *pzf, ZIP_OPEN_CALLBACK *pfnOpen, ZIP_READ_CALLBACK *pfnRead, ZIP_SEEK_CALLBACK *pfnSeek, ZIP_CLOSE_CALLBACK *pfnClose));
+// [LARGE FILE CHANGE] u32DataSize changed to u64DataSize (uint64_t) to support in-memory zips > 4GB
+extern unzFile ZEXPORT unzOpen OF((const char *path, uint8_t *pData, uint64_t u64DataSize, ZIPFILE *pzf, ZIP_OPEN_CALLBACK *pfnOpen, ZIP_READ_CALLBACK *pfnRead, ZIP_SEEK_CALLBACK *pfnSeek, ZIP_CLOSE_CALLBACK *pfnClose));
 /*
   Open a Zip file. path contain the full pathname (by example,
      on a Windows NT computer "c:\\zlib\\zlib111.zip" or on an Unix computer
@@ -265,10 +269,10 @@ extern int ZEXPORT unzCloseCurrentFile OF((unzFile file));
   Return UNZ_CRCERROR if all the file was read but the CRC is not good
 */
 
-												
+							
 extern int ZEXPORT unzReadCurrentFile OF((unzFile file, 
-					  voidp buf,
-					  uLong len));
+				  voidp buf,
+				  uLong len));
 /*
   Read bytes from the current file (opened by unzOpenCurrentFile)
   buf contain buffer where data must be copied
