@@ -20,86 +20,6 @@ void zipFile_Close(void *p);
 int32_t zipFile_Read(void *p, uint8_t *buffer, int32_t length);
 int32_t zipFile_Seek(void *p, int32_t position, int iType);
 
-CZipArchive::CZipArchive(void) {
-	m_pUnZipBuffer		= (void*)NULL;
-	m_uiUnZipBufferSize	= 131072; // amount to malloc
-}
-
-CZipArchive::~CZipArchive(void) {
-	if (m_pUnZipBuffer != (void*)NULL) {
-		free(m_pUnZipBuffer);
-		m_pUnZipBuffer = (void*)NULL;
-	}
-}
-
-// Public
-bool CZipArchive::ExtractFromFile(const char * pszSource, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite) {
-	UNZIP zip;
-    int rc;
-	
-	rc = zip.openZIP(pszSource, zipFile_Open, zipFile_Close, zipFile_Read, zipFile_Seek);
-	if (rc != UNZ_OK) {
-		zip.closeZIP();
-		return false;
-	}
-
-	rc = ExtractZip(&zip, pszDestinationFolder, bUseFolderNames, bOverwrite);
-
-	zip.closeZIP();
-	return (rc == UNZ_OK || rc == UNZ_END_OF_LIST_OF_FILE);
-}
-
-// Public
-bool CZipArchive::ExtractFromMemory(uint8_t *pData, int iDataSize, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite) {
-	UNZIP zip;
-	int rc;
-
-	rc = zip.openZIP(pData, iDataSize);
-	if (rc != UNZ_OK) {
-		zip.closeZIP();
-		return false;
-	}
-
-	rc = ExtractZip(&zip, pszDestinationFolder, bUseFolderNames, bOverwrite);
-
-	zip.closeZIP();
-	return (rc == UNZ_OK || rc == UNZ_END_OF_LIST_OF_FILE);
-}
-
-int CZipArchive::ExtractZip(UNZIP* zip, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite) {
-	char szComment[256], szName[256];
-	unz_file_info fi;
-	int rc;
-
-	// Use global comment as a zip sanity check
-	rc = zip->getGlobalComment(szComment, sizeof(szComment));
-	if (rc != UNZ_OK) {
-		return rc;
-	}
-
-	// Ensure that the destination root folder exists
-	CreateDirectory(pszDestinationFolder, NULL);
-
-	zip->gotoFirstFile();
-	rc = UNZ_OK;
-
-	// Loop through all files
-	while (rc == UNZ_OK) {
-		// File record ok?
-		rc = zip->getFileInfo(&fi, szName, sizeof(szName), NULL, 0, szComment, sizeof(szComment));
-		if (rc == UNZ_OK) {
-			// Extract the current file
-			if ((rc = ExtractCurrentFile(zip, pszDestinationFolder, bUseFolderNames, bOverwrite)) != UNZ_OK) {
-				// Error during extraction of file. Break out of loop
-				break;
-			}
-		}
-		rc = zip->gotoNextFile();
-	}
-
-	// Return status
-	return rc;
-}
 
 char *strrepl(char *Str, size_t BufSiz, char *OldStr, char *NewStr) {
     int OldLen, NewLen;
@@ -132,7 +52,138 @@ char *strreplall(char *Str, size_t BufSiz, char *OldStr, char *NewStr) {
 	return ret;
 }
 
-int CZipArchive::ExtractCurrentFile(UNZIP* zip, const char * pszDestinationFolder, const bool bUseFolderNames, bool bOverwrite) {
+CZipArchive::CZipArchive(void) {
+	m_pUnZipBuffer		= (void*)NULL;
+	m_uiUnZipBufferSize	= 131072; // amount to malloc
+}
+
+CZipArchive::~CZipArchive(void) {
+	if (m_pUnZipBuffer != (void*)NULL) {
+		free(m_pUnZipBuffer);
+		m_pUnZipBuffer = (void*)NULL;
+	}
+}
+
+// Public
+bool CZipArchive::ExtractFromFile(const char * pszSource, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback, void* progressUserData) {
+	UNZIP zip;
+    int rc;
+	
+	rc = zip.openZIP(pszSource, zipFile_Open, zipFile_Close, zipFile_Read, zipFile_Seek);
+	if (rc != UNZ_OK) {
+		zip.closeZIP();
+		return false;
+	}
+
+	rc = ExtractZip(&zip, pszDestinationFolder, bUseFolderNames, bOverwrite, bStripSingleRootFolder, progressCallback, progressUserData);
+
+	zip.closeZIP();
+	return (rc == UNZ_OK || rc == UNZ_END_OF_LIST_OF_FILE);
+}
+
+// Public
+bool CZipArchive::ExtractFromMemory(uint8_t *pData, int iDataSize, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback, void* progressUserData) {
+	UNZIP zip;
+	int rc;
+
+	rc = zip.openZIP(pData, iDataSize);
+	if (rc != UNZ_OK) {
+		zip.closeZIP();
+		return false;
+	}
+
+	rc = ExtractZip(&zip, pszDestinationFolder, bUseFolderNames, bOverwrite, bStripSingleRootFolder, progressCallback, progressUserData);
+
+	zip.closeZIP();
+	return (rc == UNZ_OK || rc == UNZ_END_OF_LIST_OF_FILE);
+}
+
+int CZipArchive::ExtractZip(UNZIP* zip, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback, void* progressUserData) {
+	char szComment[256], szName[256];
+	char firstRoot[260] = {0};
+	char pathCopy[1024];
+	unz_file_info fi;
+	int rc;
+	int currentFileIndex = 0;
+	int totalFileCount = 0;
+	const char* pszStripPrefix = NULL;
+
+	// Use global comment as a zip sanity check
+	rc = zip->getGlobalComment(szComment, sizeof(szComment));
+	if (rc != UNZ_OK) {
+		return rc;
+	}
+
+	// If strip single root requested, first pass to detect single root folder name (and count when progress callback set)
+	if (bStripSingleRootFolder) {
+		zip->gotoFirstFile();
+		rc = UNZ_OK;
+		while (rc == UNZ_OK) {
+			rc = zip->getFileInfo(&fi, szName, sizeof(szName), NULL, 0, szComment, sizeof(szComment));
+			if (rc != UNZ_OK) break;
+			if (progressCallback != NULL) totalFileCount++;
+			strncpy(pathCopy, szName, sizeof(pathCopy) - 1);
+			pathCopy[sizeof(pathCopy) - 1] = '\0';
+			strreplall(pathCopy, sizeof(pathCopy), (char*)"/", (char*)"\\");
+			char* p = strchr(pathCopy, '\\');
+			size_t len = p ? (size_t)(p - pathCopy) : strlen(pathCopy);
+			if (len > 0 && len < sizeof(firstRoot)) {
+				if (firstRoot[0] == '\0') {
+					strncpy(firstRoot, pathCopy, len);
+					firstRoot[len] = '\0';
+				} else if (len != strlen(firstRoot) || strncmp(firstRoot, pathCopy, len) != 0) {
+					firstRoot[0] = '\0';
+				}
+			}
+			rc = zip->gotoNextFile();
+		}
+		pszStripPrefix = (firstRoot[0] != '\0') ? firstRoot : NULL;
+		zip->gotoFirstFile();
+		rc = UNZ_OK;
+	}
+	// If progress callback set but we didn't count yet, do a count-only pass
+	else if (progressCallback != NULL) {
+		zip->gotoFirstFile();
+		rc = UNZ_OK;
+		while (rc == UNZ_OK) {
+			rc = zip->getFileInfo(&fi, szName, sizeof(szName), NULL, 0, szComment, sizeof(szComment));
+			if (rc != UNZ_OK) break;
+			totalFileCount++;
+			rc = zip->gotoNextFile();
+		}
+		zip->gotoFirstFile();
+		rc = UNZ_OK;
+	}
+
+	// Ensure that the destination root folder exists
+	CreateDirectory(pszDestinationFolder, NULL);
+
+	// Loop through all files
+	while (rc == UNZ_OK) {
+		// File record ok?
+		rc = zip->getFileInfo(&fi, szName, sizeof(szName), NULL, 0, szComment, sizeof(szComment));
+		if (rc == UNZ_OK) {
+			currentFileIndex++;
+			if (progressCallback != NULL) {
+				if (!progressCallback(currentFileIndex, totalFileCount, szName, progressUserData)) {
+					rc = UNZ_PARAMERROR;  /* cancelled by user */
+					break;
+				}
+			}
+			// Extract the current file
+			if ((rc = ExtractCurrentFile(zip, pszDestinationFolder, bUseFolderNames, bOverwrite, pszStripPrefix)) != UNZ_OK) {
+				// Error during extraction of file. Break out of loop
+				break;
+			}
+		}
+		rc = zip->gotoNextFile();
+	}
+
+	// Return status
+	return rc;
+}
+
+int CZipArchive::ExtractCurrentFile(UNZIP* zip, const char * pszDestinationFolder, const bool bUseFolderNames, bool bOverwrite, const char* pszStripRootPrefix) {
 	char szComment[256] = {0};
 	char szFileName_InZip[1024] = {0};
 	char szBuffer[1024];
@@ -179,6 +230,18 @@ int CZipArchive::ExtractCurrentFile(UNZIP* zip, const char * pszDestinationFolde
 	}
 	else {
 		strcpy(szFileName_InZip, szBuffer);
+	}
+
+	// Strip single root prefix if requested (e.g. "MyApp\sub\file.txt" -> "sub\file.txt")
+	if (pszStripRootPrefix && pszStripRootPrefix[0] != '\0') {
+		size_t prefixLen = strlen(pszStripRootPrefix);
+		if (strncmp(szFileName_InZip, pszStripRootPrefix, prefixLen) == 0) {
+			char c = szFileName_InZip[prefixLen];
+			if (c == '\\' || c == '/' || c == '\0') {
+				size_t skip = prefixLen + (c ? 1 : 0);
+				memmove(szFileName_InZip, szFileName_InZip + skip, strlen(szFileName_InZip + skip) + 1);
+			}
+		}
 	}
 
 	// Set reference
