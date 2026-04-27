@@ -65,7 +65,7 @@ CZipArchive::~CZipArchive(void) {
 }
 
 // Public
-bool CZipArchive::ExtractFromFile(const char * pszSource, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback, void* progressUserData) {
+bool CZipArchive::ExtractFromZipFile(const char * pszSource, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback, void* progressUserData) {
 	UNZIP zip;
     int rc;
 	

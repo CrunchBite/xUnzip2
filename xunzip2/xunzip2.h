@@ -28,7 +28,7 @@ typedef bool (*xunzip_progress_fn)(int currentFile, int totalFiles, const char* 
  * @param progressUserData       Passed to progressCallback; use NULL if not needed.
  * @return true on success, false on failure.
  */
-bool xunzipFromFile(const char * pszSource, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite = true, const bool bStripSingleRootFolder = false, xunzip_progress_fn progressCallback = NULL, void* progressUserData = NULL);
+bool xunzipFromZipFile(const char * pszSource, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite = true, const bool bStripSingleRootFolder = false, xunzip_progress_fn progressCallback = NULL, void* progressUserData = NULL);
 
 /**
  * Extract a ZIP from a buffer in memory.

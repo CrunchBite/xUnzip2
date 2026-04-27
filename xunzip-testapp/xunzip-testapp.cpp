@@ -37,16 +37,16 @@ VOID __cdecl main() {
 	// If you want to be sure you have enough space available for your payload to unpack uncomment the code block above to have a clean Z:\ drive and don't call mountAllDrives()
 	mountAllDrives();
 
-	// START xunzipFromFile TEST
+	// START xunzipFromZipFile TEST
 
 	// Unpack the embedded zip file to TEMPZIP_FILENAME
 	unpackPayload();
 
 	// Extract the zip file
-	ret = xunzipFromFile(TEMPZIP_FILENAME, OUTPUT_DIR, true);
+	ret = xunzipFromZipFile(TEMPZIP_FILENAME, OUTPUT_DIR, true);
 	__debugbreak(); // Check the ret value and the cache drive contents
 
-	// END xunzipFromFile TEST
+	// END xunzipFromZipFile TEST
 
 
 	// START xunzipFromMemory TEST

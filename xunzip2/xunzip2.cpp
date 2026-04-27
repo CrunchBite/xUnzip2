@@ -9,9 +9,9 @@
 #include "ziparchive.h"
 
 // Extract from a zip file on the filesystem
-bool xunzipFromFile(const char * pszSource, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback, void* progressUserData) {
+bool xunzipFromZipFile(const char * pszSource, const char * pszDestinationFolder, const bool bUseFolderNames, const bool bOverwrite, const bool bStripSingleRootFolder, xunzip_progress_fn progressCallback, void* progressUserData) {
 	CZipArchive cZip;
-	return cZip.ExtractFromFile(pszSource, pszDestinationFolder, bUseFolderNames, bOverwrite, bStripSingleRootFolder, progressCallback, progressUserData);
+	return cZip.ExtractFromZipFile(pszSource, pszDestinationFolder, bUseFolderNames, bOverwrite, bStripSingleRootFolder, progressCallback, progressUserData);
 }
 
 // Extract from address in memory
